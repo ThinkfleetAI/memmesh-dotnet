@@ -30,7 +30,7 @@ public sealed class MemMeshClient : IDisposable
     public HealthService Health { get; }
 
     public MemMeshClient(string apiKey, string projectId,
-        string baseUrl = "https://memory.thinkfleet.ai", HttpClient? httpClient = null)
+        string baseUrl = "https://app.memmesh.ai", HttpClient? httpClient = null)
     {
         if (string.IsNullOrEmpty(apiKey)) throw new ArgumentException("apiKey is required");
         if (string.IsNullOrEmpty(projectId)) throw new ArgumentException("projectId is required");
