@@ -25,6 +25,26 @@ public sealed class MemoryService(MemMeshClient c)
         return c.Send<MemoryItem>(HttpMethod.Post, "admin/memory", body, ct);
     }
 
+    /// <summary>Ingest an image / audio / document. The engine extracts text
+    /// (vision, transcription, or OCR via LiteLLM) and runs it through the
+    /// observe pipeline, so the result is real memories — not just a stored
+    /// file. Requires multimodal to be enabled on the engine.</summary>
+    public Task<IngestMediaResult> IngestMediaAsync(byte[] media, string mimeType,
+        string? userId = null, string? agentId = null, string? sessionId = null,
+        string? source = null, CancellationToken ct = default)
+    {
+        var body = new Dictionary<string, object?>
+        {
+            ["dataBase64"] = Convert.ToBase64String(media),
+            ["mimeType"] = mimeType,
+        };
+        if (userId is not null) body["userId"] = userId;
+        if (agentId is not null) body["agentId"] = agentId;
+        if (sessionId is not null) body["sessionId"] = sessionId;
+        if (source is not null) body["source"] = source;
+        return c.Send<IngestMediaResult>(HttpMethod.Post, "memory/media", body, ct);
+    }
+
     /// <summary>Seed a memory directly.</summary>
     public Task<MemoryItem> CreateAsync(string content, string type = "fact",
         string scope = "project", int importance = 5, string? category = null,

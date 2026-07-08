@@ -51,3 +51,12 @@ public sealed record DedupResult(
     [property: JsonPropertyName("scanned")] int Scanned,
     [property: JsonPropertyName("groups")] int Groups,
     [property: JsonPropertyName("superseded")] int Superseded);
+
+/// <summary>Outcome of ingesting one media item: the memories extracted from it
+/// plus the text the model read and where the raw bytes were kept.</summary>
+public sealed record IngestMediaResult(
+    [property: JsonPropertyName("saved")] List<MemoryItem> Saved,
+    [property: JsonPropertyName("candidateCount")] int CandidateCount,
+    [property: JsonPropertyName("extractedText")] string ExtractedText,
+    [property: JsonPropertyName("modality")] string Modality,
+    [property: JsonPropertyName("blobUri")] string BlobUri);
