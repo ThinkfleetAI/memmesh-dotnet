@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>MemMesh</RootNamespace>
+    <AssemblyName>MemMesh</AssemblyName>
+
+    <!-- NuGet package metadata -->
+    <PackageId>MemMesh</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>ThinkFleet</Authors>
+    <Description>Official .NET SDK for MemMesh — memory + prediction for AI agents.</Description>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://memmesh.ai</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/ThinkfleetAI/memmesh-dotnet</RepositoryUrl>
+    <PackageTags>ai;agents;memory;llm;prediction;memmesh</PackageTags>
+  </PropertyGroup>
+
+</Project>
