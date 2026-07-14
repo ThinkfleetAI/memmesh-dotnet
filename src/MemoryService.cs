@@ -21,6 +21,12 @@ public sealed class MemoryService(MemMeshClient c)
             ["content"] = content, ["type"] = type, ["scope"] = scope,
             ["importance"] = importance, ["source"] = "admin_created", ["metadata"] = md,
         };
+        // Event time, not ingest time. validFrom is the field behavior mining
+        // buckets day-of-week / hour-of-day on, so this is what makes a backfill
+        // work: without it every historical row lands at the moment of import and
+        // the mined patterns describe the import job rather than the data. The
+        // metadata copy above is kept only for readers that already look for it.
+        if (occurredAt is not null) body["validFrom"] = occurredAt;
         if (category is not null) body["category"] = category;
         return c.Send<MemoryItem>(HttpMethod.Post, "admin/memory", body, ct);
     }
@@ -45,24 +51,41 @@ public sealed class MemoryService(MemMeshClient c)
         return c.Send<IngestMediaResult>(HttpMethod.Post, "memory/media", body, ct);
     }
 
-    /// <summary>Seed a memory directly.</summary>
+    /// <summary>Seed a memory directly. Pass <paramref name="occurredAt"/> (ISO-8601)
+    /// when seeding anything back-dated: it is the event time behavior mining
+    /// buckets patterns by, and it defaults to now.</summary>
     public Task<MemoryItem> CreateAsync(string content, string type = "fact",
         string scope = "project", int importance = 5, string? category = null,
-        CancellationToken ct = default)
+        string? occurredAt = null, CancellationToken ct = default)
     {
         var body = new Dictionary<string, object?>
         {
             ["content"] = content, ["type"] = type, ["scope"] = scope, ["importance"] = importance,
         };
+        if (occurredAt is not null) body["validFrom"] = occurredAt;
         if (category is not null) body["category"] = category;
         return c.Send<MemoryItem>(HttpMethod.Post, "admin/memory", body, ct);
     }
 
-    /// <summary>Hybrid semantic + keyword search.</summary>
+    /// <summary>Fetch a single memory by id.
+    ///
+    /// The point-lookup counterpart to ListAsync/SearchAsync: without it, a caller
+    /// holding a memory id (from a pattern's sourceMemoryIds, an audit log, a
+    /// webhook) had no way to resolve it and had to page ListAsync hoping the row
+    /// was still on one.</summary>
+    public Task<MemoryItem> GetAsync(string memoryId, CancellationToken ct = default)
+        => c.Send<MemoryItem>(HttpMethod.Get, $"admin/memory/{memoryId}", null, ct);
+
+    /// <summary>Hybrid semantic + keyword search. Page by bumping <paramref name="offset"/>.</summary>
+    // `offset` is appended after the existing optional params on purpose: putting
+    // it earlier would rebind existing positional callers (SearchAsync(q, 10,
+    // "project")) onto the wrong argument.
     public Task<List<SearchResult>> SearchAsync(string query, int limit = 10,
-        string? scope = null, string? status = null, CancellationToken ct = default)
+        string? scope = null, string? status = null, int? offset = null,
+        CancellationToken ct = default)
     {
         var body = new Dictionary<string, object?> { ["query"] = query, ["limit"] = limit };
+        if (offset is > 0) body["offset"] = offset;
         if (scope is not null) body["scope"] = scope;
         if (status is not null) body["status"] = status;
         return c.Send<List<SearchResult>>(HttpMethod.Post, "admin/memory/search", body, ct);
