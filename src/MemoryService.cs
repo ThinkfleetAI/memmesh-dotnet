@@ -6,6 +6,11 @@ namespace MemMesh;
 public sealed class MemoryService(MemMeshClient c)
 {
     /// <summary>Record that something happened (the primary agent ingestion call).</summary>
+    /// <remarks>Pass structured fields the miner reads via <paramref name="metadata"/>.
+    /// The RFM Monetary score sums a numeric <c>amount</c> (or <c>value</c>/<c>total</c>,
+    /// or a <c>lineItems</c> array) — a price written only into <paramref name="content"/>
+    /// is not parsed, so set it there:
+    /// <c>metadata: new Dictionary&lt;string, object?&gt; { ["amount"] = 42.0 }</c>.</remarks>
     public Task<MemoryItem> ObserveAsync(string content, Subject? subject = null,
         string type = "event", string scope = "project", int importance = 5,
         string? category = null, string? activityType = null, string? occurredAt = null,
