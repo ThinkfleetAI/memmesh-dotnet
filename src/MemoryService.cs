@@ -81,6 +81,75 @@ public sealed class MemoryService(MemMeshClient c)
     public Task<MemoryItem> GetAsync(string memoryId, CancellationToken ct = default)
         => c.Send<MemoryItem>(HttpMethod.Get, $"admin/memory/{memoryId}", null, ct);
 
+    /// <summary>Render a procedure into the injectable content string —
+    /// identical to the engine-side renderer, so client-authored content
+    /// matches what the server would produce.</summary>
+    public static string RenderProcedureContent(string goal, IEnumerable<ProcedureStep> steps,
+        string? whenToUse = null, IEnumerable<string>? failureModes = null)
+    {
+        var lines = new List<string> { $"Goal: {goal.Trim()}" };
+        if (!string.IsNullOrWhiteSpace(whenToUse)) lines.Add($"When: {whenToUse!.Trim()}");
+        lines.Add("Steps:");
+        var i = 1;
+        foreach (var s in steps)
+        {
+            var suffix = string.IsNullOrWhiteSpace(s.Pitfall) ? "" : $" (watch out: {s.Pitfall!.Trim()})";
+            lines.Add($"{i}. {s.Text.Trim()}{suffix}");
+            i++;
+        }
+        var failures = (failureModes ?? []).Select(f => f.Trim()).Where(f => f.Length > 0).ToList();
+        if (failures.Count > 0)
+        {
+            lines.Add("Avoid:");
+            lines.AddRange(failures.Select(f => $"- {f}"));
+        }
+        return string.Join("\n", lines);
+    }
+
+    /// <summary>Author a procedure ("how this job is done here"). Stored as a
+    /// <c>procedure</c> memory: the structured shape on <c>metadata</c> and the
+    /// rendered how-to on <c>content</c>, so retrieval injects it as an explicit
+    /// exemplar.</summary>
+    public Task<MemoryItem> CreateProcedureAsync(string goal, IReadOnlyList<ProcedureStep> steps,
+        string? whenToUse = null, IReadOnlyList<string>? failureModes = null,
+        string? category = null, string scope = "project", int importance = 7,
+        CancellationToken ct = default)
+    {
+        var metadata = new Dictionary<string, object?> { ["goal"] = goal, ["steps"] = steps };
+        if (whenToUse is not null) metadata["whenToUse"] = whenToUse;
+        if (failureModes is not null && failureModes.Count > 0) metadata["failureModes"] = failureModes;
+        var body = new Dictionary<string, object?>
+        {
+            ["content"] = RenderProcedureContent(goal, steps, whenToUse, failureModes),
+            ["type"] = "procedure", ["scope"] = scope, ["importance"] = importance,
+            ["metadata"] = metadata,
+        };
+        if (category is not null) body["category"] = category;
+        return c.Send<MemoryItem>(HttpMethod.Post, "admin/memory", body, ct);
+    }
+
+    /// <summary>The adjudication queue — everything the system is unsure about.
+    /// Each row carries a <c>ReviewReason</c> (pending / flagged / low_confidence
+    /// / stale).</summary>
+    public Task<List<ReviewQueueItem>> ListPendingReviewAsync(int? limit = null, int? offset = null,
+        CancellationToken ct = default)
+    {
+        var q = new List<string>();
+        if (limit is not null) q.Add($"limit={limit}");
+        if (offset is not null) q.Add($"offset={offset}");
+        var path = "admin/memory/review" + (q.Count > 0 ? "?" + string.Join("&", q) : "");
+        return c.Send<List<ReviewQueueItem>>(HttpMethod.Get, path, null, ct);
+    }
+
+    /// <summary>Get the project's memory precedence policy — which memory wins
+    /// when two disagree. Falls back to the default ladder when unset.</summary>
+    public Task<PrecedencePolicy> GetPrecedenceAsync(CancellationToken ct = default)
+        => c.Send<PrecedencePolicy>(HttpMethod.Get, "admin/memory/precedence", null, ct);
+
+    /// <summary>Save the precedence policy. Requires the Memory Steward role.</summary>
+    public Task<PrecedencePolicy> SetPrecedenceAsync(PrecedencePolicy policy, CancellationToken ct = default)
+        => c.Send<PrecedencePolicy>(HttpMethod.Put, "admin/memory/precedence", policy, ct);
+
     /// <summary>Hybrid semantic + keyword search. Page by bumping <paramref name="offset"/>.</summary>
     // `offset` is appended after the existing optional params on purpose: putting
     // it earlier would rebind existing positional callers (SearchAsync(q, 10,

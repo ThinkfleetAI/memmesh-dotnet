@@ -17,6 +17,37 @@ public sealed record MemoryItem(
     [property: JsonPropertyName("confidence")] double Confidence,
     [property: JsonPropertyName("supersededById")] string? SupersededById);
 
+/// <summary>A review-queue row: a memory plus why it needs a steward's
+/// attention. <c>ReviewReason</c> is one of pending / flagged / low_confidence
+/// / stale.</summary>
+public sealed record ReviewQueueItem(
+    [property: JsonPropertyName("id")] string Id,
+    [property: JsonPropertyName("type")] string Type,
+    [property: JsonPropertyName("content")] string Content,
+    [property: JsonPropertyName("importance")] double Importance,
+    [property: JsonPropertyName("scope")] string Scope,
+    [property: JsonPropertyName("status")] string Status,
+    [property: JsonPropertyName("confidence")] double Confidence,
+    [property: JsonPropertyName("supersededById")] string? SupersededById,
+    [property: JsonPropertyName("reviewReason")] string ReviewReason);
+
+/// <summary>One step of a procedure. <c>Pitfall</c> is an optional warning.</summary>
+public sealed record ProcedureStep(
+    [property: JsonPropertyName("text")] string Text,
+    [property: JsonPropertyName("pitfall")] string? Pitfall = null);
+
+/// <summary>Category-level precedence exception: for this category, this tier wins.</summary>
+public sealed record PrecedenceOverride(
+    [property: JsonPropertyName("category")] string Category,
+    [property: JsonPropertyName("winningTier")] string WinningTier);
+
+/// <summary>Which memory wins when two disagree. Default ladder:
+/// human_verified &gt; local &gt; licensed_brain &gt; base.</summary>
+public sealed record PrecedencePolicy(
+    [property: JsonPropertyName("defaultOrder")] List<string> DefaultOrder,
+    [property: JsonPropertyName("scopeNearestWins")] bool ScopeNearestWins,
+    [property: JsonPropertyName("overrides")] List<PrecedenceOverride> Overrides);
+
 public sealed record SearchResult(
     [property: JsonPropertyName("id")] string Id,
     [property: JsonPropertyName("type")] string Type,
