@@ -25,6 +25,7 @@ public sealed class MemoryService(MemMeshClient c)
         string? content = null, Subject? subject = null,
         string type = "event", string scope = "project", int importance = 5,
         string? category = null, string? activityType = null, string? occurredAt = null,
+        string? userId = null, string? agentId = null, string? sessionId = null,
         IDictionary<string, object?>? metadata = null, CancellationToken ct = default)
     {
         // PRIMARY path: raw text through the engine's noise filter. POST
@@ -34,6 +35,12 @@ public sealed class MemoryService(MemMeshClient c)
         {
             var observeBody = new Dictionary<string, object?> { ["text"] = text, ["role"] = role };
             if (occurredAt is not null) observeBody["occurredAt"] = occurredAt;
+            // Provenance, all optional server-side. Added only when set, so a
+            // turn without them is indistinguishable from one made by an older
+            // client rather than carrying explicit nulls.
+            if (userId is not null) observeBody["userId"] = userId;
+            if (agentId is not null) observeBody["agentId"] = agentId;
+            if (sessionId is not null) observeBody["sessionId"] = sessionId;
             return await c.Send<ObserveResponse>(HttpMethod.Post, "memory/observe", observeBody, ct)
                 .ConfigureAwait(false);
         }
