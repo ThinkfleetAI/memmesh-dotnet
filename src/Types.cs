@@ -1218,3 +1218,81 @@ public sealed record FinancialCalibrationReport(
     [property: JsonPropertyName("strategyReliability")] double StrategyReliability,
     [property: JsonPropertyName("totalResolved")] int TotalResolved,
     [property: JsonPropertyName("generatedAt")] string GeneratedAt);
+
+// ── Knowledge graph ─────────────────────────────────────────────────────────
+
+/// <summary>A resolved thing — person, org, product, concept — filed under
+/// <c>CanonicalName</c>, with <c>Aliases</c> resolving to it.</summary>
+public sealed record MemoryEntity(
+    [property: JsonPropertyName("id")] string Id,
+    [property: JsonPropertyName("canonicalName")] string CanonicalName,
+    [property: JsonPropertyName("type")] string? Type = null,
+    [property: JsonPropertyName("scope")] string? Scope = null,
+    [property: JsonPropertyName("aliases")] List<string>? Aliases = null,
+    [property: JsonPropertyName("description")] string? Description = null,
+    [property: JsonPropertyName("projectId")] string? ProjectId = null,
+    // The brain that first created this entity. Entities dedupe per project, so
+    // this is provenance, NOT an isolation key — brain-scoped graph work filters
+    // on the edge's brain, which the read routes apply server-side.
+    [property: JsonPropertyName("brainId")] string? BrainId = null,
+    [property: JsonPropertyName("metadata")] IReadOnlyDictionary<string, JsonElement>? Metadata = null,
+    [property: JsonPropertyName("validFrom")] string? ValidFrom = null,
+    // Null while the entity is still current.
+    [property: JsonPropertyName("validTo")] string? ValidTo = null,
+    [property: JsonPropertyName("supersededById")] string? SupersededById = null);
+
+/// <summary>An edge as the READ routes return it — hydrated, not the raw
+/// <c>memory_edge</c> row. <c>Subject</c> and <c>Object</c> are resolved
+/// entities rather than ids, plus a <c>Hop</c> counter.
+///
+/// This is the server's <c>GraphTraversalEdge</c>, returned by
+/// <c>ListEdgesAsync</c>, <c>TraverseAsync</c>, and the edges of
+/// <c>GetEntityAsync</c>. The raw row shape (<c>subjectId</c> / <c>objectId</c>)
+/// is not exposed by any read route, so it is deliberately not modelled — a
+/// type nothing returns is a trap.</summary>
+public sealed record GraphTraversalEdge(
+    [property: JsonPropertyName("id")] string Id,
+    [property: JsonPropertyName("subject")] MemoryEntity Subject,
+    [property: JsonPropertyName("predicate")] string Predicate,
+    // Null when ObjectLiteral carries the value instead.
+    [property: JsonPropertyName("object")] MemoryEntity? Object = null,
+    [property: JsonPropertyName("objectLiteral")] string? ObjectLiteral = null,
+    [property: JsonPropertyName("weight")] double Weight = 0,
+    [property: JsonPropertyName("validFrom")] string? ValidFrom = null,
+    [property: JsonPropertyName("validTo")] string? ValidTo = null,
+    [property: JsonPropertyName("sourceMemoryId")] string? SourceMemoryId = null,
+    // Distance from the seed on a traverse — 1 for a direct neighbour.
+    // ListEdges has no seed, so every edge comes back with Hop = 0.
+    [property: JsonPropertyName("hop")] int Hop = 0);
+
+/// <summary>Whether KG extraction is on, platform-wide and for this project.</summary>
+public sealed record ExtractionState(
+    [property: JsonPropertyName("platformEnabled")] bool PlatformEnabled = false,
+    [property: JsonPropertyName("projectEnabled")] bool ProjectEnabled = false);
+
+/// <summary>Aggregate graph counts.
+///
+/// <c>MemoriesWithEdges</c> against your total memory count is the useful ratio:
+/// it says how much of what you remember made it into the graph rather than
+/// remaining an isolated embedding. A low ratio usually means extraction is off
+/// — check <c>Extraction</c> before concluding the corpus simply had no
+/// relations in it.</summary>
+public sealed record GraphStats
+{
+    [JsonPropertyName("entityCount")] public long EntityCount { get; init; }
+    [JsonPropertyName("edgeCount")] public long EdgeCount { get; init; }
+    /// <summary>Distinct memories that produced at least one edge.</summary>
+    [JsonPropertyName("memoriesWithEdges")] public long MemoriesWithEdges { get; init; }
+    [JsonPropertyName("retiredEntities")] public long RetiredEntities { get; init; }
+    [JsonPropertyName("retiredEdges")] public long RetiredEdges { get; init; }
+    /// <summary>Live entity counts keyed by entity type.</summary>
+    [JsonPropertyName("entitiesByType")] public Dictionary<string, long> EntitiesByType { get; init; } = new();
+    [JsonPropertyName("extraction")] public ExtractionState? Extraction { get; init; }
+}
+
+/// <summary>An entity plus its 1-hop neighbourhood.</summary>
+public sealed record EntityWithEdges
+{
+    [JsonPropertyName("entity")] public MemoryEntity? Entity { get; init; }
+    [JsonPropertyName("edges")] public List<GraphTraversalEdge> Edges { get; init; } = new();
+}

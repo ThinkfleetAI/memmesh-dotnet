@@ -48,6 +48,8 @@ public sealed class MemMeshClient : IDisposable
     public FinancialService Financial { get; }
     public BrainsService Brains { get; }
     public ConsentService Consent { get; }
+    /// <summary>The knowledge graph extraction builds from observed memory.</summary>
+    public GraphService Graph { get; }
 
     /// <param name="apiKey">Project API key (<c>sk-...</c>).</param>
     /// <param name="projectId">Default project for all calls; override per-call via <see cref="RequestOptions"/>.</param>
@@ -87,6 +89,7 @@ public sealed class MemMeshClient : IDisposable
         Financial = new FinancialService(this);
         Brains = new BrainsService(this);
         Consent = new ConsentService(this);
+        Graph = new GraphService(this);
     }
 
     // Relative to the project scope (no leading slash on `path`).
